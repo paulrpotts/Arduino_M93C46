@@ -13,16 +13,16 @@
     The M93C46 part uses a "Microwire" communication protocol that is a variation of SPI.
 
     The regular Arduino libraries do not support the irregular data lengths used by this part, so we just bit-bang the clock, data out,
-    and slave select lines, and use the Arduino standard digitalRead() call to determine the state of the incoming data line.
+    and sub select lines, and use the Arduino standard digitalRead() call to determine the state of the incoming data line.
     
     This program does not exercise the entire command set. I have tested ERASE commands but not the WRITE ALL or ERASE ALL commands.
     They should work, but if you add code to use these commands, make sure to test it carefully.
     
     We are writing very small amounts of data, and getting it correct was more important to me than making it fast, so I used hard-coded
     1 msec delays between transitions of the clock and data signals. This makes the actual clock speed of a single command about 500 Hz,
-    with a 3 msec margin around the command for bringing the slave select up and down.
+    with a 3 msec margin around the command for bringing the sub select up and down.
 
-    I am not using the status feature which involves raising the slave select and reading the MISO pin to detect when the read or write
+    I am not using the status feature which involves raising the sub select and reading the MISO pin to detect when the read or write
     cycle has finished. Instead I just read back the data to verify. The status feature might be useful if we needed to drive a series of
     writes at a rate closer to the maximum supported speed.
 */
@@ -34,7 +34,7 @@
 #define LED_GREEN    3
 #define LED_BLUE     4
 
-#define SLAVESELECT 10 /* SS   */
+#define SUBSELECT   10 /* SS   */
 #define SPICLOCK    11 /* SCK  */
 #define DATAOUT     12 /* MOSI */
 #define DATAIN      13 /* MISO */
@@ -144,11 +144,11 @@ uint32_t assemble_CMD_16_ERASE( uint8_t addr               ) { return ( uint32_t
     Do a simple bit-bang SPI transfer with hard-coded delays.
 
     Clock is low when idle. The data line is sampled on the leading edge of the
-    clock, so we change it on the falling edge. Have the LEDs follow the slave select,
+    clock, so we change it on the falling edge. Have the LEDs follow the sub select,
     so we can see that something is happening. Select should be high when active.
 */
-#define SLAVE_SEL_DELAY_PRE_CLOCK_MSEC    ( 3 )
-#define SLAVE_SEL_DELAY_POST_CLOCK_MSEC   ( 3 )
+#define SUB_SEL_DELAY_PRE_CLOCK_MSEC      ( 3 )
+#define SUB_SEL_DELAY_POST_CLOCK_MSEC     ( 3 )
 #define INTER_CLOCK_TRANSITION_DELAY_MSEC ( 1 )
 
 void write_bit_series( uint32_t bits, uint8_t num_bits_to_send )
@@ -174,8 +174,8 @@ void write_bit_series( uint32_t bits, uint8_t num_bits_to_send )
 void write_cmd( uint32_t bits, uint8_t num_bits_to_send )
 {
     digitalWrite( LED_BLUE, HIGH );
-    digitalWrite( SLAVESELECT, HIGH );
-    delay ( SLAVE_SEL_DELAY_PRE_CLOCK_MSEC );
+    digitalWrite( SUBSELECT, HIGH );
+    delay ( SUB_SEL_DELAY_PRE_CLOCK_MSEC );
 
     write_bit_series( bits, num_bits_to_send );
 
@@ -185,8 +185,8 @@ void write_cmd( uint32_t bits, uint8_t num_bits_to_send )
     digitalWrite( DATAOUT, LOW );
     digitalWrite( SPICLOCK, LOW );
 
-    delay ( SLAVE_SEL_DELAY_POST_CLOCK_MSEC );
-    digitalWrite( SLAVESELECT, LOW );
+    delay ( SUB_SEL_DELAY_POST_CLOCK_MSEC );
+    digitalWrite( SUBSELECT, LOW );
     digitalWrite( LED_BLUE, LOW );
 
 }
@@ -205,8 +205,8 @@ uint16_t read_16( uint8_t addr )
     uint32_t out_bits = assemble_CMD_16_READ( addr );
 
     digitalWrite( LED_BLUE, HIGH );
-    digitalWrite( SLAVESELECT, HIGH );
-    delay ( SLAVE_SEL_DELAY_PRE_CLOCK_MSEC );
+    digitalWrite( SUBSELECT, HIGH );
+    delay ( SUB_SEL_DELAY_PRE_CLOCK_MSEC );
 
     /*
         Write out the read command and address
@@ -245,8 +245,8 @@ uint16_t read_16( uint8_t addr )
     digitalWrite( DATAOUT, LOW );
     digitalWrite( SPICLOCK, LOW );
 
-    delay ( SLAVE_SEL_DELAY_POST_CLOCK_MSEC );
-    digitalWrite( SLAVESELECT, LOW );
+    delay ( SUB_SEL_DELAY_POST_CLOCK_MSEC );
+    digitalWrite( SUBSELECT, LOW );
     digitalWrite( LED_BLUE, LOW );
 
     return in_bits;
@@ -264,8 +264,8 @@ uint16_t read_8( uint8_t addr )
     uint32_t out_bits = assemble_CMD_8_READ( addr );
 
     digitalWrite( LED_BLUE, HIGH );
-    digitalWrite( SLAVESELECT, HIGH );
-    delay ( SLAVE_SEL_DELAY_PRE_CLOCK_MSEC );
+    digitalWrite( SUBSELECT, HIGH );
+    delay ( SUB_SEL_DELAY_PRE_CLOCK_MSEC );
 
     /*
         Write out the read command and address
@@ -304,8 +304,8 @@ uint16_t read_8( uint8_t addr )
     digitalWrite( DATAOUT, LOW );
     digitalWrite( SPICLOCK, LOW );
 
-    delay ( SLAVE_SEL_DELAY_POST_CLOCK_MSEC );
-    digitalWrite( SLAVESELECT, LOW );
+    delay ( SUB_SEL_DELAY_POST_CLOCK_MSEC );
+    digitalWrite( SUBSELECT, LOW );
     digitalWrite( LED_BLUE, LOW );
 
     return in_bits;
@@ -323,14 +323,14 @@ void setup()
 
     pinMode( DATAOUT, OUTPUT );
     pinMode( SPICLOCK,OUTPUT );
-    pinMode( SLAVESELECT,OUTPUT );
+    pinMode( SUBSELECT,OUTPUT );
 
     pinMode( DATAIN, INPUT );
 
     /*
         Initially, select is high (device is not selected; clock is low; data is "don't care"
     */
-    digitalWrite(SLAVESELECT,HIGH);
+    digitalWrite(SUBSELECT,HIGH);
     digitalWrite( SPICLOCK, LOW );
 
     /*
